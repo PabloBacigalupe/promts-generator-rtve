@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Prepara prompts de ilustración editorial con cuatro estilos visuales. Copia tu dirección de arte y úsala en un chat nuevo.">
+  <meta name="theme-color" content="#f5f5f1">
+  <title>promts generator rtve</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%2324291f'/%3E%3Ctext x='7' y='28' fill='%23d6ec88' font-size='25'%3Em%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script src="assets.js" defer></script>
+  <script src="styles-data.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="app-header">
+    <a href="#" class="brand" aria-label="promts generator rtve, inicio"><span class="brand-symbol">p</span><span>promts generator rtve</span></a>
+    <span class="workspace">Estudio editorial</span>
+  </header>
+  <main>
+    <section class="intro"><p class="eyebrow">DE LA NOTICIA A LA DIRECCIÓN DE ARTE</p><h1>Tu idea. El prompt preciso<span>.</span></h1><p class="intro-copy">Elige una mirada, prepara tu prompt y llévalo a un chat nuevo.</p></section>
+    <div class="studio-layout">
+      <div class="brief-column">
+        <section class="panel" aria-labelledby="briefHeading">
+          <div class="section-head"><h2 id="briefHeading"><span class="step">01</span> La noticia</h2><button class="subtle-button" id="exampleBtn">Cargar ejemplo ↗</button></div>
+          <label for="headline">Titular <span class="required">*</span></label>
+          <textarea id="headline" rows="2" required placeholder="¿Qué historia vamos a contar?"></textarea>
+          <p class="error" id="headlineError" role="alert" hidden>Escribe un titular para generar el prompt.</p>
+          <label for="description">Descripción / Información ampliada <span class="optional">Opcional</span></label>
+          <textarea id="description" rows="4" placeholder="Pega el texto de la noticia, los datos clave o el contexto editorial…"></textarea>
+          <p class="field-note">Sin límite de caracteres en este campo. El chat donde lo pegues puede tener sus propios límites.</p>
+        </section>
+        <section class="panel" aria-labelledby="styleHeading">
+          <div class="section-head"><h2 id="styleHeading"><span class="step">02</span> Dirección de arte</h2><span class="small-label">TUS 4 ESTILOS</span></div>
+          <div class="style-grid" id="styles" role="group" aria-label="Estilos visuales"></div>
+          <p class="field-note">Pulsa una tarjeta para seleccionarla y editar sus referencias.</p>
+          <details id="artEditor" class="art-editor">
+            <summary id="editorTitle">Editar referencias del estilo</summary>
+            <div class="editor-content">
+              <div class="reference-heading"><h3>Referencias de estilo</h3><button type="button" id="restoreBtn" class="subtle-button">↺ Volver a las referencias por defecto</button></div>
+              <p class="field-note">Guían el color, la técnica y el lenguaje visual. Las originales siempre se pueden recuperar. Los cambios se aplican solo a este ejercicio.</p>
+              <div id="styleRefs" class="editable-refs"></div>
+              <button type="button" id="addStyleBtn" class="button outline full">+ Añadir referencias de estilo</button>
+              <label class="subject-toggle"><input type="checkbox" id="subjectEnabled"> Añadir referencia sujeto</label>
+              <div id="subjectPanel" hidden>
+                <p class="field-note">Personas, edificios o lugares que deben conservar su identidad. Indica qué rasgos y posiciones se deben respetar.</p>
+                <div id="subjectRefs" class="editable-refs"></div>
+                <button type="button" id="addSubjectBtn" class="button outline full">+ Añadir referencias de sujeto</button>
+              </div>
+              <p class="field-note">PNG, JPEG o WebP · hasta 20 MB por imagen. Las imágenes se quedan en tu navegador. Adjunta en el chat las que figuren en el prompt; copiarlas aquí no las envía a ChatGPT.</p>
+              <p id="uploadError" class="error" role="alert" hidden></p>
+              <input id="referenceUpload" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden>
+            </div>
+          </details>
+          <p class="style-rule" id="styleDescription"></p>
+          <div class="style-tags" id="styleTags"></div>
+          <div class="format-block"><label for="format">Formato de la imagen que pedirás</label><select id="format"><option value="1920x1080">1920x1080px (Web/Horizontal)</option><option value="1080x1080">1080x1080px (Cuadrado)</option><option value="1080x1920">1080x1920px (Story/Vertical)</option><option value="1200x630">1200x630px (Miniatura Link)</option><option value="800x600">800x600px (Prensa Tradicional)</option></select></div>
+        </section>
+      </div>
+      <div class="output-column">
+        <section class="panel prompt-panel" aria-labelledby="promptHeading">
+          <div class="section-head"><h2 id="promptHeading"><span class="step">03</span> Tu prompt</h2><span class="small-label" id="promptState" role="status">POR CREAR</span></div>
+          <label for="proposals">Número de propuestas</label><select id="proposals"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select>
+          <button id="generateBtn" class="button primary full">Generar prompt ↗</button>
+          <div class="prompt-label"><label for="prompt">Dirección creativa editable</label><button type="button" id="clearPromptBtn" class="subtle-button">Limpiar texto</button></div>
+          <textarea id="prompt" rows="17" placeholder="Aquí aparecerá el prompt completo con tu noticia, el estilo y el formato. Puedes afinarlo antes de copiarlo."></textarea>
+          <div class="prompt-meta"><span id="promptCount">0 caracteres</span><span>Texto + referencias para tu chat</span></div>
+          <p id="staleNotice" class="notice" role="alert" hidden>Has cambiado la noticia, el estilo o el formato después de editar el prompt. Tu texto se conserva. Pulsa «Regenerar con la noticia actual» para reemplazarlo por uno actualizado antes de copiar o descargar.</p>
+          <p class="attachment-note" id="attachmentNote"></p>
+          <div class="prompt-actions"><button id="copyBtn" class="button primary" disabled>Copiar prompt</button><button id="downloadBtn" class="button outline" disabled>Descargar .txt ↓</button></div>
+          <a class="button soft full chat-link" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">Abrir ChatGPT ↗</a>
+          <p class="field-note">Abre un chat nuevo y pega el prompt. Este enlace no envía ni pega el texto automáticamente.</p>
+        </section>
+        <section class="panel flow-panel" aria-labelledby="flowHeading">
+          <h2 id="flowHeading">De aquí a tu imagen</h2>
+          <ol><li><strong>Prepara y copia.</strong> Escribe la noticia, elige el estilo y revisa el prompt.</li><li><strong>Pega en un chat nuevo.</strong> Adjunta las referencias indicadas en el prompt y pide a ChatGPT que genere las propuestas.</li><li><strong>Afina allí el resultado.</strong> Pide variaciones y descarga la imagen desde ese chat.</li></ol>
+          <p class="privacy-note">promts generator rtve prepara texto en tu navegador: no pide claves, no llama a una API y no genera imágenes. La creación de imágenes en ChatGPT depende de las funciones y límites de tu cuenta. Tus textos no se guardan al cerrar o recargar; copia o descarga lo que quieras conservar.</p>
+        </section>
+
+      </div>
+    </div>
+    <footer><span>promts generator rtve / ESTUDIO DE PRODUCCIÓN EDITORIAL</span><span>Prepara aquí. Crea en tu chat.</span></footer>
+  </main>
+  <div id="toast" role="status" class="toast" hidden></div>
+</body>
+</html>
