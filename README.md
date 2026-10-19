@@ -13,7 +13,7 @@ Funciona en el navegador, sin claves, llamadas a una API ni generación de imág
 
 Las cuatro tarjetas abren su editor de referencias dentro de Dirección de arte. Puedes añadir, reemplazar o eliminar imágenes para un ejercicio y recuperar siempre las referencias de estilo originales. La miniatura muestra la primera referencia activa.
 Cada imagen tiene una fidelidad de 0 a 100 (Suave, Media, Extrema) y notas. Activa «Añadir referencia sujeto» para aportar personas, edificios o lugares y definir la precisión con la que deben conservarse. Esta selección es independiente para cada estilo.
-Descarga las referencias activas mediante sus enlaces y adjúntalas al chat con los nombres indicados en el prompt. Copiar texto no transfiere imágenes. Si eliminas todas las referencias, se utiliza solo la guía escrita del estilo.
+Pulsa «Descargar todas las referencias» al final del bloque 02 para obtener un ZIP con las referencias del estilo seleccionado y las de sujeto activadas. Descomprime el ZIP y adjunta las imágenes al chat con los nombres indicados en el prompt. También puedes descargar cada imagen mediante su enlace. Copiar texto no transfiere imágenes. Si eliminas todas las referencias, se utiliza solo la guía escrita del estilo.
 Selecciona entre 1 y 10 propuestas. «Limpiar texto» vacía únicamente el prompt; la noticia y las referencias siguen disponibles.
 **Abrir ChatGPT** abre la web, pero no envía ni pega tu texto automáticamente.
 
@@ -25,7 +25,7 @@ El contexto no se recorta ni tiene un límite impuesto por esta herramienta; el 
 
 Web: https://PabloBacigalupe.github.io/promts-generator-rtve/
 
-Abre `index.html` directamente o publica la raíz del repositorio en GitHub Pages, rama `main`, carpeta `/ (root)`.
+Abre `index.html` directamente o publica con GitHub Pages. El repositorio utiliza GitHub Actions para desplegar los archivos de la raíz al actualizar `main`.
 No requiere Python, claves ni paquetes. Si el navegador no permite copiar automáticamente, se selecciona el texto para usar Ctrl+C o ⌘C.
 Las siete referencias originales están incorporadas en `assets.js` y siempre pueden restaurarse. Las imágenes añadidas para ejercicios no se suben al repositorio ni al servidor: permanecen en memoria del navegador.
 

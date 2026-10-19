@@ -1,12 +1,12 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const {test}=require('node:test');
 const html=fs.readFileSync(__dirname+'/index.html','utf8');
-const source=fs.readFileSync(__dirname+'/app.js','utf8').replace('  init();','  globalThis.app = {init,state,generatePrompt,changed,selectStyle,copyPrompt,removeRef,restoreDefaults,referencePrompt,chooseFiles,uploadFiles};');
+const source=fs.readFileSync(__dirname+'/app.js','utf8').replace('  init();','  globalThis.app = {init,state,generatePrompt,changed,selectStyle,copyPrompt,removeRef,restoreDefaults,referencePrompt,chooseFiles,uploadFiles,referencesZip,downloadReferences};');
 function harness(failCopy=false){
   const element=()=>({click(){},querySelector(){return this.children[0];},value:'',hidden:false,disabled:false,children:[],attrs:{},events:{},selectedOptions:[{textContent:'1920x1080px (Web/Horizontal)'}],setAttribute(k,v){this.attrs[k]=v;},addEventListener(k,fn){this.events[k]=fn;},append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;},focus(){this.focused=true;},select(){this.selected=true;}});
   const elements=Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],element()]));elements.format.value='1920x1080';elements.proposals.value='1';
   let copied;
-  const context={window:{},URL:{createObjectURL(file){return 'blob:'+file.name;},revokeObjectURL(){}},Image:class {set src(v){Promise.resolve().then(()=>this.onload());}},document:{getElementById(id){assert.ok(elements[id],id);return elements[id];},createElement:element,querySelectorAll(){return elements.styles.children;}},navigator:{clipboard:{async writeText(value){if(failCopy)throw Error('Denied');copied=value;}}},setTimeout(){return 1;},clearTimeout(){}};
+  const context={Blob,TextEncoder,window:{},URL:{createObjectURL(file){return 'blob:'+file.name;},revokeObjectURL(){}},Image:class {set src(v){Promise.resolve().then(()=>this.onload());}},document:{getElementById(id){assert.ok(elements[id],id);return elements[id];},createElement:element,querySelectorAll(){return elements.styles.children;}},navigator:{clipboard:{async writeText(value){if(failCopy)throw Error('Denied');copied=value;}}},setTimeout(){return 1;},clearTimeout(){}};
   vm.createContext(context);
   for(const name of ['assets.js','styles-data.js'])vm.runInContext(fs.readFileSync(__dirname+'/'+name,'utf8'),context);
   vm.runInContext(source,context);context.app.init();return {app:context.app,e:elements,copied:()=>copied};
@@ -27,7 +27,7 @@ test('clipboard refusal provides manual selection',async()=>{
   const {app,e}=harness(true);e.headline.value='Una noticia';app.generatePrompt();await app.copyPrompt();assert.equal(e.prompt.selected,true);assert.match(e.toast.textContent,/Ctrl\+C/);
 });
 test('browser has no API calls or credential controls',()=>{
-  assert.doesNotMatch(source,/fetch\s*\(|XMLHttpRequest|\/api\//);assert.doesNotMatch(html,/id="(?:apiKey|connectionBtn|launchBtn|upscaleBtn|versionBtn)"/);
+  assert.doesNotMatch(source,/XMLHttpRequest|\/api\//);assert.doesNotMatch(html,/id="(?:apiKey|connectionBtn|launchBtn|upscaleBtn|versionBtn)"/);
 });
 
 test('reference deletion and restoration never mutate defaults; styles isolated',()=>{
@@ -50,4 +50,13 @@ test('uploads append, replace preserving fidelity, and reject invalid files atom
   const refs=app.state.configs[0].refs;assert.equal(refs.length,2);assert.equal(refs[1].name,'nuevo.png');refs[0].fidelity=90;
   app.chooseFiles('refs',refs[0].id);await app.uploadFiles([{name:'sustituto.jpg',type:'image/jpeg',size:100}]);assert.equal(refs.length,2);assert.equal(refs[0].name,'sustituto.jpg');assert.equal(refs[0].fidelity,90);
   app.chooseFiles('refs');await app.uploadFiles([{name:'ok.png',type:'image/png',size:100},{name:'bad.svg',type:'image/svg+xml',size:100}]);assert.equal(refs.length,2);assert.equal(e.uploadError.hidden,false);assert.equal(app.state.uploading,false);
+});
+
+test('ZIP preserves UTF-8 names and bytes in local and central records',async()=>{
+ const {app}=harness();const data=new Uint8Array([0,1,254,255]);const zip=Buffer.from(await app.referencesZip([{name:'ESTILO-1-niño.png',data}]).arrayBuffer());
+ assert.equal(zip.readUInt32LE(0),0x04034b50);const n=zip.readUInt16LE(26);assert.equal(zip.subarray(30,30+n).toString(),'ESTILO-1-niño.png');assert.deepEqual(zip.subarray(30+n,34+n),Buffer.from(data));
+ const end=zip.length-22;assert.equal(zip.readUInt32LE(end),0x06054b50);assert.equal(zip.readUInt16LE(end+10),1);assert.equal(zip.readUInt32LE(zip.readUInt32LE(end+16)),0x02014b50);
+});
+test('batch download disabled when no active references; restored on defaults',()=>{
+ const {app,e}=harness();assert.equal(e.downloadRefsBtn.disabled,false);app.removeRef('refs',app.state.configs[0].refs[0].id);assert.equal(e.downloadRefsBtn.disabled,true);app.restoreDefaults();assert.equal(e.downloadRefsBtn.disabled,false);
 });

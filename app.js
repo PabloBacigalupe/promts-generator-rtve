@@ -8,6 +8,7 @@
   const config = () => state.configs[state.style];
   let uploadTarget = null;
   let toastTimer;
+  let downloadingRefs = false;
   const brief = () => JSON.stringify([$('headline').value, $('description').value, state.style, $('format').value, $('proposals').value, config()]);
   const stale = () => !!$('prompt').value.trim() && state.source !== null && state.source !== brief();
   function toast(message) {
@@ -47,6 +48,8 @@ Crea exactamente ${$('proposals').value} ${Number($('proposals').value) === 1 ? 
     ['restoreBtn', 'addStyleBtn', 'addSubjectBtn', 'subjectEnabled'].forEach(id => $(id).disabled = state.uploading);
     document.querySelectorAll('.style-button').forEach(button => button.disabled = state.uploading);
     const count = config().refs.length + (config().subjectEnabled ? config().subjects.length : 0);
+    $('downloadRefsBtn').disabled = !count || state.uploading || downloadingRefs;
+    $('downloadRefsBtn').textContent = downloadingRefs ? 'Preparando descarga…' : 'Descargar todas las referencias ↓';
     $('attachmentNote').textContent = count ? `Adjunta ${count} referencia${count === 1 ? '' : 's'} en el chat nuevo, con los nombres indicados en el prompt. Copiar el texto no copia las imágenes.` : 'Sin imágenes de referencia activas: el prompt utilizará la descripción escrita del estilo.';
     $('promptState').textContent = empty ? 'POR CREAR' : stale() ? 'NOTICIA MODIFICADA' : $('prompt').value === state.generated ? 'LISTO PARA COPIAR' : 'EDITADO POR TI';
     $('generateBtn').textContent = empty ? 'Generar prompt ↗' : 'Regenerar con la noticia actual ↗';
@@ -192,6 +195,58 @@ Crea exactamente ${$('proposals').value} ${Number($('proposals').value) === 1 ? 
     link.href = url; link.download = 'promts-generator-rtve.txt'; document.body.append(link); link.click(); link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
+  // ZIP without compression: image files are already compressed. UTF-8 names,
+  // CRC-32 and central directory keep downloads compatible with desktop unzip tools.
+  function referencesZip(files) {
+    const parts = [], directory = []; let offset = 0, directorySize = 0;
+    const encoder = new TextEncoder();
+    for (const file of files) {
+      const name = encoder.encode(file.name.replace(/[\\/\x00-\x1f]/g, '_'));
+      const data = file.data;
+      if (name.length > 65535 || offset + data.length > 0xffffffff) throw new Error('El conjunto de referencias es demasiado grande.');
+      let crc = 0xffffffff;
+      for (const byte of data) {crc ^= byte; for (let i = 0; i < 8; i++) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);}
+      crc = (crc ^ 0xffffffff) >>> 0;
+      const header = new Uint8Array(30), h = new DataView(header.buffer);
+      h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x800, true);
+      h.setUint16(12, 0x21, true); h.setUint32(14, crc, true);
+      h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, name.length, true);
+      const central = new Uint8Array(46), c = new DataView(central.buffer);
+      c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true);
+      c.setUint16(8, 0x800, true); c.setUint16(14, 0x21, true); c.setUint32(16, crc, true);
+      c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, name.length, true); c.setUint32(42, offset, true);
+      parts.push(header, name, data); directory.push(central, name);
+      offset += header.length + name.length + data.length; directorySize += central.length + name.length;
+    }
+    if (files.length > 65535 || offset + directorySize > 0xffffffff) throw new Error('El conjunto de referencias es demasiado grande.');
+    const end = new Uint8Array(22), e = new DataView(end.buffer);
+    e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
+    e.setUint32(12, directorySize, true); e.setUint32(16, offset, true);
+    return new Blob([...parts, ...directory, end], {type: 'application/zip'});
+  }
+  async function downloadReferences() {
+    if (state.uploading || downloadingRefs) return;
+    const cfg = config(), styleNumber = state.style + 1;
+    const refs = cfg.refs.map((r, i) => ({url:r.url, name:attachmentName('refs', i, r)}));
+    if (cfg.subjectEnabled) refs.push(...cfg.subjects.map((r, i) => ({url:r.url, name:attachmentName('subjects', i, r)})));
+    if (!refs.length) return;
+    downloadingRefs = true; sync();
+    try {
+      // Start reading all active images before any subsequent editing can revoke their URLs.
+      const files = await Promise.all(refs.map(async ref => {
+        if (!ref.url.startsWith('data:image/') && !ref.url.startsWith('blob:')) throw new Error('Referencia no disponible.');
+        const response = await fetch(ref.url);
+        if (!response.ok) throw new Error('No se pudo leer una referencia.');
+        return {name:ref.name, data:new Uint8Array(await response.arrayBuffer())};
+      }));
+      const url = URL.createObjectURL(referencesZip(files)), link = document.createElement('a');
+      link.href = url; link.download = `referencias-estilo-${styleNumber}.zip`;
+      document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      toast('ZIP preparado. Descomprímelo y adjunta las imágenes junto al prompt.');
+    } catch (err) {toast('No se pudieron descargar las referencias. Vuelve a intentarlo. ' + err.message);}
+    finally {downloadingRefs = false; sync();}
+  }
   function init() {
     styles.forEach((style, index) => {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'style-button';
@@ -208,6 +263,7 @@ Crea exactamente ${$('proposals').value} ${Number($('proposals').value) === 1 ? 
     $('generateBtn').addEventListener('click', () => {if (generatePrompt()) toast('Prompt preparado. Puedes editarlo antes de copiarlo.');});
     $('copyBtn').addEventListener('click', copyPrompt);
     $('downloadBtn').addEventListener('click', downloadPrompt);
+    $('downloadRefsBtn').addEventListener('click', downloadReferences);
     $('exampleBtn').addEventListener('click', () => {
       $('headline').value = 'La vivienda se aleja de los jóvenes';
       $('description').value = 'El aumento de los alquileres y la falta de oferta dificultan el acceso de los jóvenes a su primera vivienda.';
